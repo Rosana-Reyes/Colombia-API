@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Tailwind es un framework de CSS que, a diferencia de los tradicionales como Bootstrap, no crea componentes con una sola clase, sino que tiene algo llamado Utility Classes, que son clases específicas para casa cosa. Por ejemplo, una clase para los textos, otra clase para las sobras, una para el color, entre otros. El objetivo es que puedas personalizar a fondo. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Variables CSS para el tema del dashboard */
+:root {
+  --col-yellow: #FFD700;
+  --col-blue: #003087;
+  --col-red: #CE1126;
+  --col-gold: #C9A227;
+
+  --surface: #ffffff;
+  --surface-2: #f8f7f4;
+  --surface-3: #f1ede6;
+  --border: rgba(0, 0, 0, 0.07);
+  --text-primary: #1a1814;
+  --text-secondary: #6b6560;
+  --text-muted: #9e9992;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 8px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.1);
+  --radius-card: 16px;
+}
+
+/* Estilos base */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background-color: var(--surface-2);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scroll interno de las cards */
+.card-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.12) transparent;
+}
+
+.card-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.card-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.15);
+  border-radius: 999px;
+}
+
+/* Animación de skeleton (cargando) */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-3) 25%,
+    rgba(255,255,255,0.7) 50%,
+    var(--surface-3) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Inputs modernos */
+.input-search {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  outline: none;
+}
+
+.input-search::placeholder {
+  color: var(--text-muted);
+}
+
+.input-search:focus {
+  border-color: var(--col-blue);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(0, 48, 135, 0.1);
+}
+
+/* Tag de filtro activo */
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 10px;
+  background: rgba(0, 48, 135, 0.08);
+  color: var(--col-blue);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 48, 135, 0.15);
+}
