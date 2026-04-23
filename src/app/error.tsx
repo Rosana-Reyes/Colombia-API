@@ -1,6 +1,6 @@
 "use client"; // necesita ser cliente porque usa el botón de "intentar de nuevo"
 
-// Next.js muestra este componente automáticamente cuando ocurre un error
+//  cuando ocurre un error
 // en cualquier parte de la app — por ejemplo si la API no responde
 // El prop "reset" es una función que Next.js nos da para reintentar la carga
 

@@ -1,4 +1,4 @@
-// layout.tsx — este archivo envuelve TODAS las páginas de la app
+// l este archivo envuelve TODAS las páginas de la app
 // Next.js lo usa automáticamente, no hay que llamarlo desde ningún lado
 // Aquí importo los estilos globales y defino los metadatos del sitio
 
