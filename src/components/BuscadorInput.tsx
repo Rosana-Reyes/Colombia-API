@@ -1,4 +1,3 @@
-// BuscadorInput.tsx
 // Componente reutilizable de búsqueda — lo uso en todas las cards
 // Recibe el valor actual y una función onChange para actualizar el estado del padre
 // Es un "componente controlado": el estado vive en el padre, no aquí adentro
