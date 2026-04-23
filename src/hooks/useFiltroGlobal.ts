@@ -1,14 +1,3 @@
-// src/hooks/useFiltroGlobal.ts
-//
-// Este es un custom hook — lo creé para centralizar toda la lógica del filtro
-// en vez de tener esa lógica esparcida por varios componentes
-//
-// El filtro funciona de forma jerárquica:
-// primero seleccionas un departamento → se filtran ciudades y aeropuertos
-// luego seleccionas una ciudad → se filtran los sitios turísticos
-//
-// Los logs aparecen en el navegador (F12 → Console) cada vez que el usuario hace click
-
 import { useState, useCallback } from "react";
 import type { FiltroActivo } from "@/types/colombia";
 
