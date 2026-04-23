@@ -1,12 +1,3 @@
-// Este archivo es un Route Handler de Next.js
-// Lo creé porque la API de Colombia tiene CORS deshabilitado —
-// eso significa que el navegador no puede llamarla directamente
-//
-// La solución fue crear este "proxy":
-// el navegador llama a /api/colombia (este archivo, en nuestro propio servidor)
-// y este archivo llama a api-colombia.com desde el servidor (sin restricciones de CORS)
-//
-// Los logs de este archivo aparecen en la TERMINAL donde corre npm run dev
 
 import { NextResponse } from "next/server";
 
