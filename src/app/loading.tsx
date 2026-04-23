@@ -1,4 +1,3 @@
-// loading.tsx — Next.js muestra este componente automáticamente
 // mientras la página está cargando (antes de que lleguen los datos)
 // Usé una técnica llamada "skeleton" — son cajitas grises animadas
 // que imitan la forma del contenido real para que no se vea una pantalla en blanco

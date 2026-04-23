@@ -1,5 +1,3 @@
-// src/app/api/colombia/route.ts
-//
 // Este archivo es un Route Handler de Next.js
 // Lo creé porque la API de Colombia tiene CORS deshabilitado —
 // eso significa que el navegador no puede llamarla directamente
