@@ -1,5 +1,3 @@
-// src/services/api.ts
-//
 // Aquí centralizo todas las llamadas a la API
 // En vez de llamar directo a api-colombia.com (que bloquea el navegador por CORS)
 // llamo a /api/colombia que es nuestro propio servidor — ese sí puede llamar la API externa
