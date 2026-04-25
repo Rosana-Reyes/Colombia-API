@@ -1,5 +1,3 @@
-// card de turismo, con buscador y filtrado por ciudad
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -21,18 +19,13 @@ export default function CardTurismo({
 }: CardTurismoProps) {
   const [busqueda, setBusqueda] = useState("");
 
-  /**
-   * Filtrado por ciudad + búsqueda por nombre/descripcion
-   */
   const sitiosFiltrados = useMemo(() => {
     let lista = sitios;
 
-    // Filtro jerárquico por ciudad
     if (filtro.ciudadId !== null) {
       lista = lista.filter((s) => s.cityId === filtro.ciudadId);
     }
 
-    // Filtro por texto
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase();
 
@@ -52,15 +45,19 @@ export default function CardTurismo({
 
   return (
     <div
-      className="rounded-2xl flex flex-col h-full"
+      className="rounded-2xl flex flex-col"
       style={{
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
+        maxHeight: "480px",
       }}
     >
-      {/* HEADER */}
-      <div className="p-4 pb-3 border-b" style={{ borderColor: "var(--border)" }}>
+      {/* ── HEADER ───────────────── */}
+      <div
+        className="p-4 pb-3 border-b flex-shrink-0"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -106,15 +103,7 @@ export default function CardTurismo({
               borderColor: "rgba(201,162,39,0.2)",
             }}
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"
-              />
-            </svg>
-            {filtro.ciudadNombre}
+            {String(filtro.ciudadNombre)}
           </div>
         )}
 
@@ -125,12 +114,10 @@ export default function CardTurismo({
         />
       </div>
 
-      {/* LISTA */}
-      <div className="flex-1 overflow-y-auto card-scroll p-2" style={{ minHeight: 0 }}>
+      {/* ── LISTA CON SCROLL ───────────────── */}
+      <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
-          <div className="p-2">
-            <SkeletonCard />
-          </div>
+          <SkeletonCard />
         ) : sitiosFiltrados.length === 0 ? (
           <EstadoVacio
             mensaje={filtro.ciudadId ? "Sin sitios en esta ciudad" : "Selecciona una ciudad"}

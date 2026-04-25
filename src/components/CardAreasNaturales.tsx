@@ -56,14 +56,19 @@ export default function CardAreasNaturales({
 
   return (
     <div
-      className="rounded-2xl flex flex-col h-full"
+      className="rounded-2xl flex flex-col"
       style={{
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
+        maxHeight: "480px",
       }}
     >
-      <div className="p-4 pb-3 border-b" style={{ borderColor: "var(--border)" }}>
+      {/* ── HEADER (SIN SCROLL) ───────────────── */}
+      <div
+        className="p-4 pb-3 border-b flex-shrink-0"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -110,21 +115,6 @@ export default function CardAreasNaturales({
               borderColor: "rgba(34,120,54,0.15)",
             }}
           >
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"
-              />
-            </svg>
-
-            {/* FIX: evitar render de objeto */}
             <span>{String(filtro.departamentoNombre)}</span>
           </div>
         )}
@@ -136,11 +126,10 @@ export default function CardAreasNaturales({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto card-scroll p-2" style={{ minHeight: 0 }}>
+      {/* ── CONTENIDO CON SCROLL ───────────────── */}
+      <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
-          <div className="p-2">
-            <SkeletonCard />
-          </div>
+          <SkeletonCard />
         ) : areasFiltradas.length === 0 ? (
           <EstadoVacio
             mensaje="Sin áreas naturales"

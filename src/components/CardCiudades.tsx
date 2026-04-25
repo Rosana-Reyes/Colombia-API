@@ -1,5 +1,3 @@
-// card de ciudades, con buscador y filtrado por departamento
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -26,12 +24,10 @@ export default function CardCiudades({
   const ciudadesFiltradas = useMemo(() => {
     let lista = ciudades;
 
-    // filtro por departamento activo
     if (filtro.departamentoId !== null) {
       lista = lista.filter((c) => c.departmentId === filtro.departamentoId);
     }
 
-    // filtro por búsqueda
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase();
 
@@ -45,15 +41,19 @@ export default function CardCiudades({
 
   return (
     <div
-      className="rounded-2xl flex flex-col h-full"
+      className="rounded-2xl flex flex-col"
       style={{
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
+        maxHeight: "480px",
       }}
     >
-      {/* Header */}
-      <div className="p-4 pb-3 border-b" style={{ borderColor: "var(--border)" }}>
+      {/* ── HEADER ───────────────── */}
+      <div
+        className="p-4 pb-3 border-b flex-shrink-0"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -101,20 +101,7 @@ export default function CardCiudades({
 
         {filtro.departamentoNombre && (
           <div className="filter-tag mb-2.5">
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"
-              />
-            </svg>
-            {filtro.departamentoNombre}
+            {String(filtro.departamentoNombre)}
           </div>
         )}
 
@@ -125,39 +112,17 @@ export default function CardCiudades({
         />
       </div>
 
-      {/* Listado */}
-      <div className="flex-1 overflow-y-auto card-scroll p-2" style={{ minHeight: 0 }}>
+      {/* ── LISTA CON SCROLL ───────────────── */}
+      <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
-          <div className="p-2">
-            <SkeletonCard />
-          </div>
+          <SkeletonCard />
         ) : !filtro.departamentoId && ciudadesFiltradas.length > 100 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-2 px-4">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: "var(--surface-3)" }}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                style={{ color: "var(--text-muted)" }}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-
-            <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-sm font-medium">
               Selecciona un departamento
             </p>
 
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs text-gray-400">
               o busca directamente por nombre
             </p>
 

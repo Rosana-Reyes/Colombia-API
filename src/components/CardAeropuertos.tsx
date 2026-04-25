@@ -13,7 +13,13 @@ interface CardAeropuertosProps {
   cargando?: boolean;
 }
 
-/* Componente que muestra la lista de aeropuertos, con buscador y filtrado por departamento. */
+/* 
+  Card de aeropuertos
+  FIX:
+  - Se limita la altura → aprox 10 items visibles
+  - Scroll interno SOLO en la lista
+  - No se toca el layout global (dashboard sigue normal)
+*/
 export default function CardAeropuertos({
   aeropuertos,
   filtro,
@@ -44,14 +50,19 @@ export default function CardAeropuertos({
 
   return (
     <div
-      className="rounded-2xl flex flex-col h-full"
+      className="rounded-2xl flex flex-col"
       style={{
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
+        maxHeight: "480px", 
       }}
     >
-      <div className="p-4 pb-3 border-b" style={{ borderColor: "var(--border)" }}>
+      {/* ── HEADER (NO SCROLL) ───────────────── */}
+      <div
+        className="p-4 pb-3 border-b flex-shrink-0"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -91,21 +102,6 @@ export default function CardAeropuertos({
 
         {filtro.departamentoNombre && (
           <div className="filter-tag mb-2.5">
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"
-              />
-            </svg>
-
-            {/* FIX CRÍTICO: evitar render de objeto */}
             <span>{String(filtro.departamentoNombre)}</span>
           </div>
         )}
@@ -117,11 +113,17 @@ export default function CardAeropuertos({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto card-scroll p-2" style={{ minHeight: 0 }}>
+      {/* ── CONTENIDO CON SCROLL ───────────────── */}
+      <div
+        /*
+          🔥 FIX REAL:
+          - flex-1 → ocupa el espacio restante
+          - overflow-y-auto → scroll interno
+        */
+        className="flex-1 overflow-y-auto p-2"
+      >
         {cargando ? (
-          <div className="p-2">
-            <SkeletonCard />
-          </div>
+          <SkeletonCard />
         ) : aeropuertosFiltrados.length === 0 ? (
           <EstadoVacio
             mensaje="Sin aeropuertos"
@@ -140,7 +142,6 @@ export default function CardAeropuertos({
                   style={{ background: "var(--surface-2)" }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    {/* FIX: protección contra valores no string */}
                     <p
                       className="text-sm font-medium leading-tight"
                       style={{ color: "var(--text-primary)" }}

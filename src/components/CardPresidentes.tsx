@@ -1,5 +1,3 @@
-// card de presidentes, con buscador y filtrado por nombre o partido político
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -15,7 +13,6 @@ interface CardPresidentesProps {
 
 /**
  * Formatea una fecha ISO a formato legible en español.
- * Maneja valores nulos, indefinidos o inválidos sin romper el UI.
  */
 function formatearFecha(fecha?: string | null): string {
   if (!fecha) return "—";
@@ -23,7 +20,7 @@ function formatearFecha(fecha?: string | null): string {
   const parsed = new Date(fecha);
 
   if (isNaN(parsed.getTime())) {
-    return fecha.slice(0, 4); // fallback seguro
+    return fecha.slice(0, 4);
   }
 
   return parsed.toLocaleDateString("es-CO", {
@@ -38,9 +35,6 @@ export default function CardPresidentes({
 }: CardPresidentesProps) {
   const [busqueda, setBusqueda] = useState("");
 
-  /**
-   * Filtrado por nombre, apellido o partido político
-   */
   const presidentesFiltrados = useMemo(() => {
     if (!busqueda.trim()) return presidentes;
 
@@ -55,15 +49,19 @@ export default function CardPresidentes({
 
   return (
     <div
-      className="rounded-2xl flex flex-col h-full"
+      className="rounded-2xl flex flex-col"
       style={{
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
+        maxHeight: "480px",
       }}
     >
-      {/* HEADER */}
-      <div className="p-4 pb-3 border-b" style={{ borderColor: "var(--border)" }}>
+      {/* ── HEADER ───────────────── */}
+      <div
+        className="p-4 pb-3 border-b flex-shrink-0"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -86,11 +84,17 @@ export default function CardPresidentes({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className="font-display font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
+            <h2
+              className="font-display font-semibold text-sm"
+              style={{ color: "var(--text-primary)" }}
+            >
               Presidentes
             </h2>
+
             <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
-              {cargando ? "Cargando..." : `${presidentesFiltrados.length} registros`}
+              {cargando
+                ? "Cargando..."
+                : `${presidentesFiltrados.length} registros`}
             </p>
           </div>
         </div>
@@ -102,12 +106,10 @@ export default function CardPresidentes({
         />
       </div>
 
-      {/* LISTA */}
-      <div className="flex-1 overflow-y-auto card-scroll p-2" style={{ minHeight: 0 }}>
+      {/* ── LISTA CON SCROLL ───────────────── */}
+      <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
-          <div className="p-2">
-            <SkeletonCard />
-          </div>
+          <SkeletonCard />
         ) : presidentesFiltrados.length === 0 ? (
           <EstadoVacio />
         ) : (
@@ -119,7 +121,10 @@ export default function CardPresidentes({
                   style={{ background: "var(--surface-2)" }}
                 >
                   {/* Nombre */}
-                  <p className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+                  <p
+                    className="text-sm font-semibold leading-tight"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {p.name} {p.lastName}
                   </p>
 
@@ -129,11 +134,12 @@ export default function CardPresidentes({
                       className="text-xs font-mono"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      {formatearFecha(p.startPeriodDate)} — {formatearFecha(p.endPeriodDate)}
+                      {formatearFecha(p.startPeriodDate)} —{" "}
+                      {formatearFecha(p.endPeriodDate)}
                     </span>
                   </div>
 
-                  {/* Partido político */}
+                  {/* Partido */}
                   {p.politicalParty && (
                     <span
                       className="inline-block text-xs mt-1 px-1.5 py-0.5 rounded"
