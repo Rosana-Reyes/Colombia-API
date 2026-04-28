@@ -93,8 +93,8 @@ export default function CardCiudades({
               {cargando
                 ? "Cargando..."
                 : filtro.departamentoNombre
-                ? `${ciudadesFiltradas.length} en ${filtro.departamentoNombre}`
-                : `${ciudadesFiltradas.length} total`}
+                  ? `${ciudadesFiltradas.length} en ${filtro.departamentoNombre}`
+                  : `${ciudadesFiltradas.length} total`}
             </p>
           </div>
         </div>

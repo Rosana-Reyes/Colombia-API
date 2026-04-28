@@ -600,16 +600,16 @@ export default function Grafica({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
-          {/* <GraficaDepartamentos
+        <GraficaDepartamentos
             departamentos={departamentos}
             ciudades={ciudades}
             filtro={filtro}
-          />*/}
-         {/* <GraficaCiudades
+          />
+         <GraficaCiudades
             ciudades={ciudades}
             aeropuertos={aeropuertos}
             filtro={filtro}
-          />*/}
+          />
           <GraficaAeropuertos
             aeropuertos={aeropuertos}
             ciudades={ciudades}
