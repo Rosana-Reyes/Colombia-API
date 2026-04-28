@@ -25,25 +25,26 @@ import type {
 } from "@/types/colombia";
 
 // componentes visuales — cada uno recibe sus datos y el filtro activo
-import HeroColombia       from "./HeroColombia";
-import CardDepartamentos  from "./CardDepartamentos";
-import CardCiudades       from "./CardCiudades";
-import CardTurismo        from "./CardTurismo";
-import CardAeropuertos    from "./CardAeropuertos";
+import HeroColombia from "./HeroColombia";
+import CardDepartamentos from "./CardDepartamentos";
+import CardCiudades from "./CardCiudades";
+import CardTurismo from "./CardTurismo";
+import CardAeropuertos from "./CardAeropuertos";
 import CardAreasNaturales from "./CardAreasNaturales";
-import CardPresidentes    from "./CardPresidentes";
+import CardPresidentes from "./CardPresidentes";
+import Grafica from "./charts/Grafica";
 
 export default function Dashboard() {
 
   // ── ESTADOS DE DATOS ──────────────────────────────────────────────────────
   // cada estado guarda el array que devuelve su endpoint de la API
   // empiezan vacíos y se llenan cuando llega la respuesta
-  const [departamentos,    setDepartamentos]    = useState<Departamento[]>([]);
-  const [ciudades,         setCiudades]         = useState<Ciudad[]>([]);
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [ciudades, setCiudades] = useState<Ciudad[]>([]);
   const [sitiosTuristicos, setSitiosTuristicos] = useState<SitioTuristico[]>([]);
-  const [aeropuertos,      setAeropuertos]      = useState<Aeropuerto[]>([]);
-  const [areasNaturales,   setAreasNaturales]   = useState<AreaNatural[]>([]);
-  const [presidentes,      setPresidentes]      = useState<Presidente[]>([]);
+  const [aeropuertos, setAeropuertos] = useState<Aeropuerto[]>([]);
+  const [areasNaturales, setAreasNaturales] = useState<AreaNatural[]>([]);
+  const [presidentes, setPresidentes] = useState<Presidente[]>([]);
 
   // estado para saber si todavía estamos esperando la respuesta de la API
   const [cargando, setCargando] = useState<boolean>(true);
@@ -73,12 +74,12 @@ export default function Dashboard() {
         console.log("%c════════════════════════════════════════", "color: #1a7a4a");
         console.log("%c⚙️  Iniciando carga de datos...", "color: #1a7a4a; font-weight: bold");
         console.log("%c   Endpoints que se consultan via /api/colombia:", "color: #555");
-        console.log("%c   → GET /api/v1/Department",          "color: #003087");
-        console.log("%c   → GET /api/v1/City",                "color: #CE1126");
+        console.log("%c   → GET /api/v1/Department", "color: #003087");
+        console.log("%c   → GET /api/v1/City", "color: #CE1126");
         console.log("%c   → GET /api/v1/TouristicAttraction", "color: #d4670a");
-        console.log("%c   → GET /api/v1/Airport",             "color: #003087");
-        console.log("%c   → GET /api/v1/NaturalArea",         "color: #1a7a4a");
-        console.log("%c   → GET /api/v1/President",           "color: #6b3fa0");
+        console.log("%c   → GET /api/v1/Airport", "color: #003087");
+        console.log("%c   → GET /api/v1/NaturalArea", "color: #1a7a4a");
+        console.log("%c   → GET /api/v1/President", "color: #6b3fa0");
         console.log("%c════════════════════════════════════════", "color: #1a7a4a");
 
         // uso Promise.all para lanzar los 6 fetch al mismo tiempo
@@ -98,19 +99,19 @@ export default function Dashboard() {
         // logs para confirmar cuántos registros llegó de cada endpoint
         console.log("%c════════════════════════════════════════", "color: #1a7a4a");
         console.log("%c✅ Carga completa — datos en el estado:", "color: #1a7a4a; font-weight: bold");
-        console.log(`%c   Departamentos:  ${deps.length}`,   "color: #003087; font-weight: bold");
-        console.log(`%c   Ciudades:       ${cids.length}`,   "color: #CE1126; font-weight: bold");
+        console.log(`%c   Departamentos:  ${deps.length}`, "color: #003087; font-weight: bold");
+        console.log(`%c   Ciudades:       ${cids.length}`, "color: #CE1126; font-weight: bold");
         console.log(`%c   Turismo:        ${sitios.length}`, "color: #d4670a; font-weight: bold");
-        console.log(`%c   Aeropuertos:    ${aeros.length}`,  "color: #003087; font-weight: bold");
-        console.log(`%c   Áreas Naturales:${areas.length}`,  "color: #1a7a4a; font-weight: bold");
-        console.log(`%c   Presidentes:    ${pres.length}`,   "color: #6b3fa0; font-weight: bold");
+        console.log(`%c   Aeropuertos:    ${aeros.length}`, "color: #003087; font-weight: bold");
+        console.log(`%c   Áreas Naturales:${areas.length}`, "color: #1a7a4a; font-weight: bold");
+        console.log(`%c   Presidentes:    ${pres.length}`, "color: #6b3fa0; font-weight: bold");
         console.log("%c   (abre los arrays para ver el detalle de cada registro)", "color: #aaa");
         console.log("%c   Departamentos →", "color: #003087", deps);
-        console.log("%c   Ciudades →",      "color: #CE1126", cids);
-        console.log("%c   Turismo →",       "color: #d4670a", sitios);
-        console.log("%c   Aeropuertos →",   "color: #003087", aeros);
-        console.log("%c   Áreas →",         "color: #1a7a4a", areas);
-        console.log("%c   Presidentes →",   "color: #6b3fa0", pres);
+        console.log("%c   Ciudades →", "color: #CE1126", cids);
+        console.log("%c   Turismo →", "color: #d4670a", sitios);
+        console.log("%c   Aeropuertos →", "color: #003087", aeros);
+        console.log("%c   Áreas →", "color: #1a7a4a", areas);
+        console.log("%c   Presidentes →", "color: #6b3fa0", pres);
         console.log("%c════════════════════════════════════════", "color: #1a7a4a");
 
         // guardamos los datos en el estado — esto hace que React vuelva a pintar la pantalla
@@ -169,6 +170,16 @@ export default function Dashboard() {
           Selecciona un departamento para activar el filtrado jerárquico de datos.
         </div>
       )}
+
+      {/* Grafica */}
+      <Grafica
+        filtro={filtro}
+        departamentos={departamentos}
+        ciudades={ciudades}
+        aeropuertos={aeropuertos}
+        sitios={sitiosTuristicos}
+        cargando={cargando}
+      />
 
       {/* grid de 6 cards — cada una recibe su array de datos y el filtro activo */}
       {/* el filtro lo uso para que cada card muestre solo los datos del departamento/ciudad elegida */}

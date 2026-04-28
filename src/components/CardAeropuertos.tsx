@@ -55,7 +55,7 @@ export default function CardAeropuertos({
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
-        maxHeight: "480px", 
+        maxHeight: "480px",
       }}
     >
       {/* ── HEADER (NO SCROLL) ───────────────── */}
@@ -116,7 +116,6 @@ export default function CardAeropuertos({
       {/* ── CONTENIDO CON SCROLL ───────────────── */}
       <div
         /*
-          🔥 FIX REAL:
           - flex-1 → ocupa el espacio restante
           - overflow-y-auto → scroll interno
         */

@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 
 const BASE = "https://api-colombia.com/api/v1";
@@ -8,8 +7,6 @@ export async function GET() {
   console.log("   Iniciando fetch a api-colombia.com...\n");
 
   try {
-    // lanzo los 6 fetch al mismo tiempo para que sea más rápido
-    // si los hiciera uno por uno tendría que esperar cada respuesta antes de empezar el siguiente
     const [deptRes, cityRes, touristicRes, airportRes, naturalAreaRes, presidentRes] =
       await Promise.all([
         fetch(`${BASE}/Department`),
@@ -20,7 +17,6 @@ export async function GET() {
         fetch(`${BASE}/President`),
       ]);
 
-    // convierto cada respuesta HTTP a JSON
     const [departments, cities, touristic, airports, naturalAreas, presidents] =
       await Promise.all([
         deptRes.json(),
@@ -31,7 +27,6 @@ export async function GET() {
         presidentRes.json(),
       ]);
 
-    // logs en la terminal para confirmar cuántos registros llegaron de cada endpoint
     console.log(`✅ [SERVIDOR] /Department          → ${Array.isArray(departments)  ? departments.length  : "?"} registros`);
     console.log(`✅ [SERVIDOR] /City                → ${Array.isArray(cities)       ? cities.length       : "?"} registros`);
     console.log(`✅ [SERVIDOR] /TouristicAttraction → ${Array.isArray(touristic)    ? touristic.length    : "?"} registros`);
@@ -39,20 +34,27 @@ export async function GET() {
     console.log(`✅ [SERVIDOR] /NaturalArea         → ${Array.isArray(naturalAreas) ? naturalAreas.length : "?"} registros`);
     console.log(`✅ [SERVIDOR] /President           → ${Array.isArray(presidents)   ? presidents.length   : "?"} registros`);
 
-    // muestro el primer departamento crudo para ver qué campos devuelve la API
-    if (Array.isArray(departments) && departments.length > 0) {
-      console.log("\n🔍 [SERVIDOR] Primer departamento RAW:");
-      console.log(JSON.stringify(departments[0], null, 2));
+    // ── MAPA cityId → departmentId ────────────────────────────────────────────
+    // La API NO devuelve departmentId dentro de Airport ni NaturalArea.
+    // Lo derivamos cruzando con el array de ciudades, que SÍ tiene departmentId.
+    // Así: aeropuerto.cityId → ciudad.departmentId → lo inyectamos en cada aeropuerto.
+    const cityToDept = new Map<number, number>();
+    if (Array.isArray(cities)) {
+      for (const c of cities as Record<string, unknown>[]) {
+        const cityId = Number(c.id);
+        const deptId = Number(c.departmentId ?? 0);
+        if (cityId && deptId) cityToDept.set(cityId, deptId);
+      }
     }
+    console.log(`\n🗺️  [SERVIDOR] Mapa cityId→departmentId construido: ${cityToDept.size} entradas`);
 
-    // limpio cada array: descarto objetos y arrays anidados
-    // porque si llegan al JSX React lanza el error "Objects are not valid as a React child"
+    // ── MAPEOS LIMPIOS ────────────────────────────────────────────────────────
+
     const deptLimpio = (Array.isArray(departments) ? departments : []).map(
       (d: Record<string, unknown>) => ({
         id:             Number(d.id),
         name:           String(d.name ?? ""),
         description:    typeof d.description    === "string" ? d.description    : undefined,
-        // intento varios nombres posibles para el campo de la capital
         cityCapital:
           typeof d.cityCapital  === "string" ? d.cityCapital  :
           typeof d.capital      === "string" ? d.capital      :
@@ -63,7 +65,6 @@ export async function GET() {
         municipalities: typeof d.municipalities === "number" ? d.municipalities : undefined,
         phonePrefix:    typeof d.phonePrefix    === "string" ? d.phonePrefix    : undefined,
         countryId:      typeof d.countryId      === "number" ? d.countryId      : undefined,
-        // no incluyo: cities, naturalAreas, touristAttractions (son arrays anidados)
       })
     );
 
@@ -76,7 +77,6 @@ export async function GET() {
         population:   typeof c.population  === "number" ? c.population  : undefined,
         postalCode:   typeof c.postalCode  === "string" ? c.postalCode  : undefined,
         departmentId: Number(c.departmentId ?? 0),
-        // no incluyo: c.department — es un objeto anidado que rompe React
       })
     );
 
@@ -88,33 +88,48 @@ export async function GET() {
         latitude:    typeof s.latitude    === "number" ? s.latitude    : undefined,
         longitude:   typeof s.longitude   === "number" ? s.longitude   : undefined,
         cityId:      Number(s.cityId ?? 0),
-        // no incluyo: s.city
       })
     );
 
     const airportLimpio = (Array.isArray(airports) ? airports : []).map(
-      (a: Record<string, unknown>) => ({
-        id:           Number(a.id),
-        name:         String(a.name ?? ""),
-        iataCode:     typeof a.iataCode     === "string" ? a.iataCode     : undefined,
-        oaciCode:     typeof a.oaciCode     === "string" ? a.oaciCode     : undefined,
-        type:         typeof a.type         === "string" ? a.type         : undefined,
-        departmentId: typeof a.departmentId === "number" ? a.departmentId : undefined,
-        cityId:       typeof a.cityId       === "number" ? a.cityId       : undefined,
-        // no incluyo: a.city, a.department
-      })
+      (a: Record<string, unknown>) => {
+        const cityId = Number(a.cityId ?? 0);
+
+        // FIX: la API no manda departmentId en el aeropuerto.
+        // Lo derivamos desde el mapa cityId → departmentId que construimos arriba.
+        const departmentId = cityToDept.get(cityId);
+
+        return {
+          id:           Number(a.id),
+          name:         String(a.name ?? ""),
+          iataCode:     typeof a.iataCode === "string" ? a.iataCode : undefined,
+          oaciCode:     typeof a.oaciCode === "string" ? a.oaciCode : undefined,
+          type:         typeof a.type     === "string" ? a.type     : undefined,
+          cityId:       cityId || undefined,
+          departmentId,             // ← ahora siempre llega si la ciudad existe
+        };
+      }
     );
 
     const naturalAreaLimpio = (Array.isArray(naturalAreas) ? naturalAreas : []).map(
-      (a: Record<string, unknown>) => ({
-        id:           Number(a.id),
-        name:         String(a.name ?? ""),
-        description:  typeof a.description  === "string" ? a.description  : undefined,
-        type:         typeof a.type         === "string" ? a.type         : undefined,
-        cityId:       typeof a.cityId       === "number" ? a.cityId       : undefined,
-        departmentId: typeof a.departmentId === "number" ? a.departmentId : undefined,
-        // no incluyo: a.city, a.department
-      })
+      (a: Record<string, unknown>) => {
+        const cityId = Number(a.cityId ?? 0);
+
+        // Mismo fix: si la API no manda departmentId, lo derivamos del mapa.
+        const departmentId =
+          typeof a.departmentId === "number"
+            ? a.departmentId
+            : cityToDept.get(cityId);
+
+        return {
+          id:           Number(a.id),
+          name:         String(a.name ?? ""),
+          description:  typeof a.description === "string" ? a.description : undefined,
+          type:         typeof a.type        === "string" ? a.type        : undefined,
+          cityId:       cityId || undefined,
+          departmentId,
+        };
+      }
     );
 
     const presidentLimpio = (Array.isArray(presidents) ? presidents : []).map(
@@ -130,9 +145,16 @@ export async function GET() {
       })
     );
 
+    // Verificación en logs: muestra el primer aeropuerto para confirmar el fix
+    if (airportLimpio.length > 0) {
+      console.log("\n🔍 [SERVIDOR] Primer aeropuerto con fix:");
+      console.log(JSON.stringify(airportLimpio[0], null, 2));
+      const sinDept = airportLimpio.filter((a) => a.departmentId === undefined).length;
+      console.log(`⚠️  Aeropuertos sin departmentId resuelto: ${sinDept} (deberían ser 0 o muy pocos)`);
+    }
+
     console.log("\n✅ [SERVIDOR] Enviando datos limpios al navegador\n");
 
-    // devuelvo todo en un solo JSON — el navegador lo recibe en api.ts
     return NextResponse.json({
       departments:  deptLimpio,
       cities:       cityLimpio,
