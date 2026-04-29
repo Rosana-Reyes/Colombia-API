@@ -201,6 +201,7 @@ export default function Dashboard() {
 
         <CardTurismo
           sitios={sitiosTuristicos}
+          ciudades={ciudades}
           filtro={filtro}
           cargando={cargando}
         />

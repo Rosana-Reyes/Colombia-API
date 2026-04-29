@@ -6,20 +6,12 @@ import BuscadorInput from "./BuscadorInput";
 import EstadoVacio from "./EstadoVacio";
 import SkeletonCard from "./SkeletonCard";
 
-/* Props para la card de aeropuertos */
 interface CardAeropuertosProps {
   aeropuertos: Aeropuerto[];
   filtro: FiltroActivo;
   cargando?: boolean;
 }
 
-/* 
-  Card de aeropuertos
-  FIX:
-  - Se limita la altura → aprox 10 items visibles
-  - Scroll interno SOLO en la lista
-  - No se toca el layout global (dashboard sigue normal)
-*/
 export default function CardAeropuertos({
   aeropuertos,
   filtro,
@@ -30,10 +22,20 @@ export default function CardAeropuertos({
   const aeropuertosFiltrados = useMemo(() => {
     let lista = aeropuertos;
 
-    if (filtro.departamentoId !== null) {
-      lista = lista.filter((a) => a.departmentId === filtro.departamentoId);
+    // Prioridad: ciudad
+    if (filtro.ciudadId !== null) {
+      lista = lista.filter(
+        (a) => a.cityId === filtro.ciudadId
+      );
+    }
+    // Si no hay ciudad, usar departamento
+    else if (filtro.departamentoId !== null) {
+      lista = lista.filter(
+        (a) => a.departmentId === filtro.departamentoId
+      );
     }
 
+    // Búsqueda
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase();
 
@@ -46,7 +48,7 @@ export default function CardAeropuertos({
     }
 
     return lista;
-  }, [aeropuertos, filtro.departamentoId, busqueda]);
+  }, [aeropuertos, filtro.ciudadId, filtro.departamentoId, busqueda]);
 
   return (
     <div
@@ -58,7 +60,6 @@ export default function CardAeropuertos({
         maxHeight: "480px",
       }}
     >
-      {/* ── HEADER (NO SCROLL) ───────────────── */}
       <div
         className="p-4 pb-3 border-b flex-shrink-0"
         style={{ borderColor: "var(--border)" }}
@@ -106,6 +107,12 @@ export default function CardAeropuertos({
           </div>
         )}
 
+        {filtro.ciudadNombre && (
+          <div className="filter-tag mb-2.5">
+            <span>{String(filtro.ciudadNombre)}</span>
+          </div>
+        )}
+
         <BuscadorInput
           placeholder="Buscar aeropuerto o código IATA..."
           valor={busqueda}
@@ -113,21 +120,16 @@ export default function CardAeropuertos({
         />
       </div>
 
-      {/* ── CONTENIDO CON SCROLL ───────────────── */}
-      <div
-        /*
-          - flex-1 → ocupa el espacio restante
-          - overflow-y-auto → scroll interno
-        */
-        className="flex-1 overflow-y-auto p-2"
-      >
+      <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
           <SkeletonCard />
         ) : aeropuertosFiltrados.length === 0 ? (
           <EstadoVacio
             mensaje="Sin aeropuertos"
             submensaje={
-              filtro.departamentoId
+              filtro.ciudadId
+                ? "No hay aeropuertos en esta ciudad"
+                : filtro.departamentoId
                 ? "No hay aeropuertos en este departamento"
                 : "Selecciona un departamento"
             }
@@ -145,7 +147,7 @@ export default function CardAeropuertos({
                       className="text-sm font-medium leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {typeof aero.name === "string" ? aero.name : "—"}
+                      {aero.name ?? "—"}
                     </p>
 
                     {aero.iataCode && (
@@ -156,14 +158,17 @@ export default function CardAeropuertos({
                           color: "var(--col-blue)",
                         }}
                       >
-                        {String(aero.iataCode)}
+                        {aero.iataCode}
                       </span>
                     )}
                   </div>
 
                   {aero.type && (
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      {typeof aero.type === "string" ? aero.type : "—"}
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {aero.type}
                     </p>
                   )}
                 </div>

@@ -1,19 +1,21 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { SitioTuristico, FiltroActivo } from "@/types/colombia";
+import type { SitioTuristico, FiltroActivo, Ciudad } from "@/types/colombia";
 import BuscadorInput from "./BuscadorInput";
 import EstadoVacio from "./EstadoVacio";
 import SkeletonCard from "./SkeletonCard";
 
 interface CardTurismoProps {
   sitios: SitioTuristico[];
+  ciudades: Ciudad[]; // necesario para filtrar por departamento
   filtro: FiltroActivo;
   cargando?: boolean;
 }
 
 export default function CardTurismo({
   sitios,
+  ciudades,
   filtro,
   cargando = false,
 }: CardTurismoProps) {
@@ -22,10 +24,25 @@ export default function CardTurismo({
   const sitiosFiltrados = useMemo(() => {
     let lista = sitios;
 
-    if (filtro.ciudadId !== null) {
-      lista = lista.filter((s) => s.cityId === filtro.ciudadId);
+    // filtrar por departamento usando ciudades
+    if (filtro.departamentoId !== null) {
+      const ciudadesDelDepto = ciudades
+        .filter((c) => c.departmentId === filtro.departamentoId)
+        .map((c) => c.id);
+
+      lista = lista.filter((s) =>
+        ciudadesDelDepto.includes(s.cityId)
+      );
     }
 
+    // filtrar por ciudad
+    if (filtro.ciudadId !== null) {
+      lista = lista.filter(
+        (s) => s.cityId === filtro.ciudadId
+      );
+    }
+
+    // búsqueda
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase();
 
@@ -41,7 +58,13 @@ export default function CardTurismo({
     }
 
     return lista;
-  }, [sitios, filtro.ciudadId, busqueda]);
+  }, [
+    sitios,
+    ciudades,
+    filtro.departamentoId,
+    filtro.ciudadId,
+    busqueda,
+  ]);
 
   return (
     <div
@@ -53,7 +76,7 @@ export default function CardTurismo({
         maxHeight: "480px",
       }}
     >
-      {/* ── HEADER ───────────────── */}
+      {/* HEADER */}
       <div
         className="p-4 pb-3 border-b flex-shrink-0"
         style={{ borderColor: "var(--border)" }}
@@ -87,20 +110,35 @@ export default function CardTurismo({
               Turismo
             </h2>
 
-            <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+            <p
+              className="text-xs truncate"
+              style={{ color: "var(--text-muted)" }}
+            >
               {cargando ? "Cargando..." : `${sitiosFiltrados.length} sitios`}
             </p>
           </div>
         </div>
 
-        {/* Filtro activo */}
+        {/* filtros activos */}
+        {filtro.departamentoNombre && (
+          <div
+            className="filter-tag mb-1"
+            style={{
+              background: "rgba(201,162,39,0.08)",
+              color: "#8B6914",
+              borderColor: "rgba(201,162,39,0.2)",
+            }}
+          >
+            {String(filtro.departamentoNombre)}
+          </div>
+        )}
+
         {filtro.ciudadNombre && (
           <div
             className="filter-tag mb-2.5"
             style={{
-              background: "rgba(201,162,39,0.1)",
-              color: "#8B6914",
-              borderColor: "rgba(201,162,39,0.2)",
+              background: "rgba(201,162,39,0.12)",
+              color: "#6b4f10",
             }}
           >
             {String(filtro.ciudadNombre)}
@@ -114,13 +152,19 @@ export default function CardTurismo({
         />
       </div>
 
-      {/* ── LISTA CON SCROLL ───────────────── */}
+      {/* LISTA */}
       <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
           <SkeletonCard />
         ) : sitiosFiltrados.length === 0 ? (
           <EstadoVacio
-            mensaje={filtro.ciudadId ? "Sin sitios en esta ciudad" : "Selecciona una ciudad"}
+            mensaje={
+              filtro.ciudadId
+                ? "Sin sitios en esta ciudad"
+                : filtro.departamentoId
+                ? "Sin sitios en este departamento"
+                : "Selecciona un departamento"
+            }
             submensaje={
               filtro.ciudadId
                 ? "No hay registros para esta ciudad"
