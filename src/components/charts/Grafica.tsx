@@ -489,11 +489,11 @@ export default function Grafica({ filtro, departamentos, ciudades, aeropuertos, 
         </div>
       </div>
 
-      {/* Grid gráficas */}
+      {/* Grid gráficas — la key fuerza remontaje completo al volver a esta vista */}
       {cargando ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{[...Array(5)].map((_, i) => <Skeleton key={i} />)}</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+        <div key={`graficas-${filtro.departamentoId}-${filtro.ciudadId}`} className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
           <GraficaDepartamentos departamentos={departamentos} ciudades={ciudades} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
           <GraficaCiudades      ciudades={ciudades} aeropuertos={aeropuertos} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
           <GraficaAeropuertos   aeropuertos={aeropuertos} ciudades={ciudades} departamentos={departamentos} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
