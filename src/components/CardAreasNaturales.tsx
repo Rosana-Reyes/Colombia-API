@@ -20,41 +20,30 @@ export default function CardAreasNaturales({
   const [busqueda, setBusqueda] = useState("");
 
   const areasFiltradas = useMemo(() => {
-    let lista = areas;
+    // Deduplicar por nombre (la API devuelve duplicados)
+    const sinDup = new Map<string, typeof areas[0]>();
+    for (const a of areas) {
+      const key = a.name?.trim().toLowerCase() ?? String(a.id);
+      if (!sinDup.has(key)) sinDup.set(key, a);
+    }
+    let lista = [...sinDup.values()];
 
-    // 1. Filtrar por departamento
     if (filtro.departamentoId !== null) {
-      lista = lista.filter(
-        (a) => a.departmentId === filtro.departamentoId
-      );
+      lista = lista.filter((a) => Number(a.departmentId) === Number(filtro.departamentoId));
     }
 
-    // 2. Filtrar por ciudad (encadenado)
-    if (filtro.ciudadId !== null) {
-      lista = lista.filter(
-        (a) => a.cityId === filtro.ciudadId
-      );
-    }
-
-    // 3. Búsqueda
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase();
-
       lista = lista.filter((a) => {
         const nombre = a.name?.toLowerCase() ?? "";
         const desc = a.description?.toLowerCase() ?? "";
         const tipo = a.type?.toLowerCase() ?? "";
-
-        return (
-          nombre.includes(termino) ||
-          desc.includes(termino) ||
-          tipo.includes(termino)
-        );
+        return nombre.includes(termino) || desc.includes(termino) || tipo.includes(termino);
       });
     }
 
     return lista;
-  }, [areas, filtro.departamentoId, filtro.ciudadId, busqueda]);
+  }, [areas, filtro.departamentoId, busqueda]);
 
   const tipos = useMemo(() => {
     const set = new Set(
@@ -75,7 +64,7 @@ export default function CardAreasNaturales({
         maxHeight: "480px",
       }}
     >
-      {/* HEADER */}
+      {/* ── HEADER (SIN SCROLL) ───────────────── */}
       <div
         className="p-4 pb-3 border-b flex-shrink-0"
         style={{ borderColor: "var(--border)" }}
@@ -117,10 +106,9 @@ export default function CardAreasNaturales({
           </div>
         </div>
 
-        {/* Mostrar ambos filtros */}
         {filtro.departamentoNombre && (
           <div
-            className="filter-tag mb-1"
+            className="filter-tag mb-2.5"
             style={{
               background: "rgba(34,120,54,0.07)",
               color: "#1a5c29",
@@ -131,18 +119,6 @@ export default function CardAreasNaturales({
           </div>
         )}
 
-        {filtro.ciudadNombre && (
-          <div
-            className="filter-tag mb-2.5"
-            style={{
-              background: "rgba(26,122,74,0.10)",
-              color: "#14532d",
-            }}
-          >
-            <span>{String(filtro.ciudadNombre)}</span>
-          </div>
-        )}
-
         <BuscadorInput
           placeholder="Buscar área natural..."
           valor={busqueda}
@@ -150,7 +126,7 @@ export default function CardAreasNaturales({
         />
       </div>
 
-      {/* CONTENIDO */}
+      {/* ── CONTENIDO CON SCROLL ───────────────── */}
       <div className="flex-1 overflow-y-auto p-2">
         {cargando ? (
           <SkeletonCard />
@@ -158,10 +134,8 @@ export default function CardAreasNaturales({
           <EstadoVacio
             mensaje="Sin áreas naturales"
             submensaje={
-              filtro.ciudadId
-                ? "No hay áreas en esta ciudad"
-                : filtro.departamentoId
-                ? "No hay áreas en este departamento"
+              filtro.departamentoId
+                ? "No hay registros en este departamento"
                 : "Selecciona un departamento o busca por nombre"
             }
           />

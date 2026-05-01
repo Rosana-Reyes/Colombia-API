@@ -6,12 +6,20 @@ import BuscadorInput from "./BuscadorInput";
 import EstadoVacio from "./EstadoVacio";
 import SkeletonCard from "./SkeletonCard";
 
+/* Props para la card de aeropuertos */
 interface CardAeropuertosProps {
   aeropuertos: Aeropuerto[];
   filtro: FiltroActivo;
   cargando?: boolean;
 }
 
+/* 
+  Card de aeropuertos
+  FIX:
+  - Se limita la altura → aprox 10 items visibles
+  - Scroll interno SOLO en la lista
+  - No se toca el layout global (dashboard sigue normal)
+*/
 export default function CardAeropuertos({
   aeropuertos,
   filtro,
@@ -22,20 +30,14 @@ export default function CardAeropuertos({
   const aeropuertosFiltrados = useMemo(() => {
     let lista = aeropuertos;
 
-    // Prioridad: ciudad
+    // Primero filtra por ciudad si hay una seleccionada (más específico)
     if (filtro.ciudadId !== null) {
-      lista = lista.filter(
-        (a) => a.cityId === filtro.ciudadId
-      );
-    }
-    // Si no hay ciudad, usar departamento
-    else if (filtro.departamentoId !== null) {
-      lista = lista.filter(
-        (a) => a.departmentId === filtro.departamentoId
-      );
+      lista = lista.filter((a) => Number(a.cityId) === Number(filtro.ciudadId));
+    } else if (filtro.departamentoId !== null) {
+      // Si solo hay departamento, filtra por departamento
+      lista = lista.filter((a) => Number(a.departmentId) === Number(filtro.departamentoId));
     }
 
-    // Búsqueda
     if (busqueda.trim()) {
       const termino = busqueda.toLowerCase();
 
@@ -48,7 +50,7 @@ export default function CardAeropuertos({
     }
 
     return lista;
-  }, [aeropuertos, filtro.ciudadId, filtro.departamentoId, busqueda]);
+  }, [aeropuertos, filtro.departamentoId, filtro.ciudadId, busqueda]);
 
   return (
     <div
@@ -57,9 +59,10 @@ export default function CardAeropuertos({
         background: "var(--surface)",
         boxShadow: "var(--shadow-card)",
         border: "1px solid var(--border)",
-        maxHeight: "480px",
+        maxHeight: "480px", 
       }}
     >
+      {/* ── HEADER (NO SCROLL) ───────────────── */}
       <div
         className="p-4 pb-3 border-b flex-shrink-0"
         style={{ borderColor: "var(--border)" }}
@@ -107,12 +110,6 @@ export default function CardAeropuertos({
           </div>
         )}
 
-        {filtro.ciudadNombre && (
-          <div className="filter-tag mb-2.5">
-            <span>{String(filtro.ciudadNombre)}</span>
-          </div>
-        )}
-
         <BuscadorInput
           placeholder="Buscar aeropuerto o código IATA..."
           valor={busqueda}
@@ -120,16 +117,22 @@ export default function CardAeropuertos({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      {/* ── CONTENIDO CON SCROLL ───────────────── */}
+      <div
+        /*
+          🔥 FIX REAL:
+          - flex-1 → ocupa el espacio restante
+          - overflow-y-auto → scroll interno
+        */
+        className="flex-1 overflow-y-auto p-2"
+      >
         {cargando ? (
           <SkeletonCard />
         ) : aeropuertosFiltrados.length === 0 ? (
           <EstadoVacio
             mensaje="Sin aeropuertos"
             submensaje={
-              filtro.ciudadId
-                ? "No hay aeropuertos en esta ciudad"
-                : filtro.departamentoId
+              filtro.departamentoId
                 ? "No hay aeropuertos en este departamento"
                 : "Selecciona un departamento"
             }
@@ -147,7 +150,7 @@ export default function CardAeropuertos({
                       className="text-sm font-medium leading-tight"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {aero.name ?? "—"}
+                      {typeof aero.name === "string" ? aero.name : "—"}
                     </p>
 
                     {aero.iataCode && (
@@ -158,17 +161,14 @@ export default function CardAeropuertos({
                           color: "var(--col-blue)",
                         }}
                       >
-                        {aero.iataCode}
+                        {String(aero.iataCode)}
                       </span>
                     )}
                   </div>
 
                   {aero.type && (
-                    <p
-                      className="text-xs mt-0.5"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {aero.type}
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                      {typeof aero.type === "string" ? aero.type : "—"}
                     </p>
                   )}
                 </div>
