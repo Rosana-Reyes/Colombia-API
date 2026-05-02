@@ -152,18 +152,6 @@ export default function CardAeropuertos({
                     >
                       {typeof aero.name === "string" ? aero.name : "—"}
                     </p>
-
-                    {aero.iataCode && (
-                      <span
-                        className="text-xs font-mono font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
-                        style={{
-                          background: "rgba(0,48,135,0.08)",
-                          color: "var(--col-blue)",
-                        }}
-                      >
-                        {String(aero.iataCode)}
-                      </span>
-                    )}
                   </div>
 
                   {aero.type && (
