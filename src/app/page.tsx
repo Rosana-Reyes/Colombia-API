@@ -1,8 +1,8 @@
 import Navbar from "@/components/Navbar";
-//import Dashboard from "@/components/Dashboard";
+import Dashboard from "@/components/Dashboard";
 //import DashboardV2 from "@/components/DashboardV2";
 //import DashboardV3 from "@/components/DashboardV3";
-import DashboardV4 from "@/components/DashboardV4";
+//import DashboardV4 from "@/components/DashboardV4";
 
 /**
  * Página principal de la aplicación
@@ -32,7 +32,7 @@ export default function PaginaPrincipal() {
         DashboardV3: con paginación, datos luego graficas
         DashboardV4: sin paginación, estilos más pulidos
       */}
-      <DashboardV4 />
+      <Dashboard />
 
     </div>
   );
