@@ -23,12 +23,11 @@ interface GraficaProps {
 
 // ── Paleta ────────────────────────────────────────────────────────────────────
 const C = {
-  azul: { bg: "rgba(2,85,240,0.75)", border: "rgba(2,85,240,1)" },
-  rojo: { bg: "rgba(250,5,34,0.80)", border: "rgba(250,5,34,1)" },
-  amarillo: { bg: "rgba(255,200,30,0.90)", border: "rgba(220,160,0,1)" },
-  // gris más opaco para que se vean las barras aunque no tengan aeropuertos
-  gris: { bg: "rgba(160,160,160,0.55)", border: "rgba(120,120,120,0.70)" },
-  verde: { bg: "rgba(0,180,90,0.75)", border: "rgba(0,150,70,1)" },
+  azul:     { bg: "rgba(2,85,240,0.75)",    border: "rgba(2,85,240,1)" },
+  rojo:     { bg: "rgba(250,5,34,0.80)",    border: "rgba(250,5,34,1)" },
+  amarillo: { bg: "rgba(255,200,30,0.90)",  border: "rgba(220,160,0,1)" },
+  gris:     { bg: "rgba(180,180,180,0.28)", border: "rgba(150,150,150,0.40)" },
+  verde:    { bg: "rgba(0,180,90,0.75)",    border: "rgba(0,150,70,1)" },
 };
 
 const DOUGHNUT_COLORS = [
@@ -48,6 +47,21 @@ function dedup<T>(arr: T[], key: keyof T): T[] {
 
 function topEntradas<K>(map: Map<K, number>, n = 15): [K, number][] {
   return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+function getCiudadIdDeAeropuerto(
+  aero: { cityId?: number; deparmentId?: number; departmentId?: number },
+  departamentos: { id: number; cityCapitalId?: number }[]
+): number | null {
+  // Prioridad 1: cityId directo (cuando la API lo incluye)
+  if (aero.cityId != null && aero.cityId > 0) return aero.cityId;
+
+  // Prioridad 2: deparmentId → capital del departamento
+  // Nota: la API tiene typo "deparmentId" (sin 't') — soportamos ambas variantes
+  const depId = aero.deparmentId ?? aero.departmentId;
+  if (depId == null) return null;
+  const dep = departamentos.find((d) => d.id === depId);
+  return dep?.cityCapitalId ?? null;
 }
 
 // ── Hook Chart.js ─────────────────────────────────────────────────────────────
@@ -112,11 +126,9 @@ function GraficaDepartamentos({ departamentos, ciudades, filtro, onChangeFiltro 
     };
   }, [departamentos, ciudades, filtro.departamentoId, filtro.departamentoNombre]);
 
-  // Dataset: "Municipios" en vez de "Ciudades" porque la API los llama cities pero son municipios
-  const data: ChartData<"bar"> = { labels, datasets: [{ label: "Municipios", data: valores, backgroundColor: coloresBg, borderColor: coloresBd, borderWidth: 1, borderRadius: 4 }] };
+  const data: ChartData<"bar"> = { labels, datasets: [{ label: "Ciudades", data: valores, backgroundColor: coloresBg, borderColor: coloresBd, borderWidth: 1, borderRadius: 4 }] };
   const options: ChartOptions<"bar"> = {
-    // Tooltip muestra "municipios" para reflejar el término correcto
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} municipios` } } },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} ciudades` } } },
     scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: "rgba(0,0,0,0.05)" } } },
   };
 
@@ -134,19 +146,20 @@ function GraficaDepartamentos({ departamentos, ciudades, filtro, onChangeFiltro 
     <div className="flex flex-col gap-2">
       <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{titulo}</p>
       <div className="relative w-full h-56"><canvas ref={ref} /></div>
-      {/* Hint debajo de la gráfica — recuerda al usuario que puede hacer clic */}
       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-        {filtro.departamentoId ? "🔴 Departamento seleccionado · clic para deseleccionar" : "Clic para seleccionar y filtrar"}
+        {filtro.departamentoId ? "🔴 Departamento seleccionado · clic para deseleccionar" : "Clic en una barra para filtrar"}
       </p>
     </div>
   );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// GRÁFICA 2 — Ciudades del departamento seleccionado
+// GRÁFICA 2 — Municipios del departamento seleccionado
+// Métrica: población (barras). El color indica si tiene aeropuerto.
+// El tooltip muestra población + número de aeropuertos.
 // ══════════════════════════════════════════════════════════════════════════════
-function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
-  ciudades: Ciudad[]; aeropuertos: Aeropuerto[]; filtro: FiltroActivo;
+function GraficaCiudades({ ciudades, aeropuertos, departamentos, filtro, onChangeFiltro }: {
+  ciudades: Ciudad[]; aeropuertos: Aeropuerto[]; departamentos: Departamento[]; filtro: FiltroActivo;
   onChangeFiltro: (n: Partial<FiltroActivo>) => void;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -158,59 +171,48 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
     const enDept = dedup(ciudades, "id")
       .filter((c) => Number(c.departmentId) === Number(filtro.departamentoId));
 
-    // 2. Conteo de aeropuertos por cityId — siempre lo calculamos para tooltip y colores.
-    //    Number() en ambos lados para evitar mismatch string vs number de la API.
+    // 2. Conteo de aeropuertos por municipio usando el helper correcto:
+    //    aero.deparmentId → Departamento.cityCapitalId → Ciudad.id
+    //    Así Rafael Núñez (deparmentId:6, Bolívar) → cityCapitalId:210 → Cartagena ✓
     const aerosU = dedup(aeropuertos, "id");
     const aerosXCiu = new Map<number, number>(enDept.map((c) => [Number(c.id), 0]));
     aerosU.forEach((a) => {
-      const cid = Number(a.cityId);
-      if (cid && aerosXCiu.has(cid)) aerosXCiu.set(cid, (aerosXCiu.get(cid) ?? 0) + 1);
+      const cid = getCiudadIdDeAeropuerto(a, departamentos);
+      if (cid != null && aerosXCiu.has(cid)) {
+        aerosXCiu.set(cid, (aerosXCiu.get(cid) ?? 0) + 1);
+      }
     });
 
     // 3. Orden doble:
-    //    1er criterio: población desc (la barra más alta va primero — lectura natural)
-    //    2do criterio: si empatan en población, el que tiene aeropuerto va antes
-    //    Los municipios CON aeropuerto se garantizan visibles aunque no estén en top 10.
-    const conAero = enDept.filter((c) => (aerosXCiu.get(Number(c.id)) ?? 0) > 0);
-    const sinAero = enDept.filter((c) => (aerosXCiu.get(Number(c.id)) ?? 0) === 0);
-
-    // Top 10 por población (incluye tanto los que tienen como los que no tienen aeropuerto)
+    //    1er criterio: población desc (barra más alta primero — lectura natural)
+    //    2do criterio (desempate): el que tiene aeropuerto sube
+    //    Los municipios CON aeropuerto que no alcancen el top 10 se añaden al final
+    //    para que siempre sean visibles y seleccionables (ej: Rionegro en Antioquia)
     const top10 = [...enDept]
       .sort((a, b) => {
-        // 1er criterio: población descendente
         const diffPob = (b.population ?? 0) - (a.population ?? 0);
         if (diffPob !== 0) return diffPob;
-        // 2do criterio (desempate): el que tiene aeropuerto sube
         return (aerosXCiu.get(Number(b.id)) ?? 0) - (aerosXCiu.get(Number(a.id)) ?? 0);
       })
       .slice(0, 10);
 
-    // Municipios con aeropuerto que no alcanzaron el top 10 — se añaden al final
-    // para que siempre sean seleccionables (Rionegro puede tener poca población pero tiene aero)
     const idsTop10 = new Set(top10.map((c) => c.id));
-    const conAeroFuera = conAero
-      .filter((c) => !idsTop10.has(c.id))
-      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0)); // ordenados por pob dentro del grupo extra
+    // Municipios con aeropuerto fuera del top 10 → añadir al final ordenados por pob
+    const conAeroFuera = enDept
+      .filter((c) => (aerosXCiu.get(Number(c.id)) ?? 0) > 0 && !idsTop10.has(c.id))
+      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
 
-    // Lista final: top10 ordenado por pob + extras con aeropuerto al final
     const visibles = [...top10, ...conAeroFuera];
-
-
     const hayC = filtro.ciudadId !== null;
 
     return {
-      labels: visibles.map((c) => cortar(c.name)),
-      // Métrica principal: población real de cada municipio.
-      // Los que no tienen dato quedan en 0 — el valor mínimo visual se maneja en las
-      // opciones del chart con un plugin de "barra mínima" para que sean clicables.
+      labels:  visibles.map((c) => cortar(c.name)),
       valores: visibles.map((c) => c.population ?? 0),
-      // Valor máximo para calcular el piso mínimo visual (2% del máximo)
-      maxPob: Math.max(...visibles.map((c) => c.population ?? 0), 1),
+      // maxPob para calcular el piso mínimo visual (barras sin dato siguen siendo clicables)
+      maxPob:  Math.max(...visibles.map((c) => c.population ?? 0), 1),
       // Colores:
-      //   🟡 amarillo = tiene aeropuerto (sin filtro activo)
-      //   🔵 azul     = sin aeropuerto (sin filtro activo)
-      //   🔴 rojo     = municipio seleccionado
-      //   ⬜ gris     = el resto cuando hay selección
+      //   🟡 amarillo = tiene aeropuerto (sin filtro)   🔵 azul = sin aeropuerto (sin filtro)
+      //   🔴 rojo     = municipio seleccionado          ⬜ gris = resto cuando hay selección
       coloresBg: visibles.map((c) => {
         if (hayC) return filtro.ciudadId === c.id ? C.rojo.bg : C.gris.bg;
         return (aerosXCiu.get(Number(c.id)) ?? 0) > 0 ? C.amarillo.bg : C.azul.bg;
@@ -219,31 +221,27 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
         if (hayC) return filtro.ciudadId === c.id ? C.rojo.border : C.gris.border;
         return (aerosXCiu.get(Number(c.id)) ?? 0) > 0 ? C.amarillo.border : C.azul.border;
       }),
-      // Guardamos el conteo de aeropuertos para mostrarlo en el tooltip
+      // Guardamos el conteo de aeropuertos para el tooltip
       numAeros: visibles.map((c) => aerosXCiu.get(Number(c.id)) ?? 0),
       titulo: hayC
         ? `Municipios de ${filtro.departamentoNombre} — seleccionado: ${filtro.ciudadNombre}`
         : `Municipios de ${filtro.departamentoNombre} (${enDept.length}) — por población`,
       enDept: visibles,
     };
-  }, [ciudades, aeropuertos, filtro]);
+  }, [ciudades, aeropuertos, departamentos, filtro]);
 
-  // Tooltip y formato del eje Y cambian según la métrica activa
-
-  // Piso mínimo visual: 2% del valor máximo — hace que los municipios sin dato
-  // muestren una barrita visible y clicable sin distorsionar la escala
+  // Piso mínimo visual: 2% del máximo — los municipios sin dato de población
+  // muestran una barrita clicable sin distorsionar la escala
   const pisMin = Math.round((result?.maxPob ?? 0) * 0.02);
 
-  // Dataset: valores reales, pero aplicamos el piso en el plugin de renderizado
   const data: ChartData<"bar"> = {
     labels: result?.labels ?? [],
     datasets: [{
       label: "Población",
-      // Reemplazamos 0 por pisMin para que Chart.js dibuje la barra —
-      // el tooltip usa result.valores para mostrar el número real
-      data: (result?.valores ?? []).map((v) => v > 0 ? v : pisMin),
+      // Reemplazamos 0 por pisMin solo visualmente; tooltip usa el valor real
+      data:  (result?.valores ?? []).map((v) => v > 0 ? v : pisMin),
       backgroundColor: result?.coloresBg ?? [],
-      borderColor: result?.coloresBd ?? [],
+      borderColor:     result?.coloresBd ?? [],
       borderWidth: 1,
       borderRadius: 4,
     }],
@@ -254,19 +252,19 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          // Línea 1: valor REAL (no el pisMin artificial)
+          // Línea 1: población real formateada con separador de miles
           label: (c) => {
             const real = result?.valores?.[c.dataIndex] ?? 0;
             return real > 0
               ? ` ${real.toLocaleString("es-CO")} hab.`
               : " Sin datos de población registrados";
           },
-          // Línea 2: aeropuertos del municipio
+          // Línea 2: aeropuertos del municipio (cruzado correctamente via departamento)
           afterLabel: (c) => {
             const n = result?.numAeros?.[c.dataIndex] ?? 0;
             return n > 0
-              ? ` 🛩️ ${n} aeropuerto${n > 1 ? "s" : ""}`
-              : " 🛩️ Sin aeropuertos registrados";
+              ? ` ✈ ${n} aeropuerto${n > 1 ? "s" : ""}`
+              : " ✈ Sin aeropuertos registrados";
           },
         },
       },
@@ -281,7 +279,7 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
           callback: (v) => {
             const n = Number(v);
             if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-            if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+            if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
             return String(n);
           },
         },
@@ -294,7 +292,7 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
     if (!result) return;
     const c = result.enDept[i];
     if (!c) return;
-    // Clic en barra seleccionada → deselecciona; clic en otra → selecciona
+    // Clic en barra activa → deselecciona; clic en otra → selecciona
     if (filtro.ciudadId === c.id) {
       onChangeFiltro({ ciudadId: null, ciudadNombre: null, departamentoId: filtro.departamentoId, departamentoNombre: filtro.departamentoNombre });
     } else {
@@ -302,19 +300,18 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
     }
   });
 
-  // Leyenda dinámica con descripción debajo
-  const hintTexto = "🟡 Con aeropuerto · 🔵 Sin aeropuerto · 🔴 seleccionado";
-
   return (
     <div className="flex flex-col gap-2">
-      {/* Título dinámico: incluye la métrica activa */}
       <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{result?.titulo ?? "Municipios"}</p>
       {result === null
         ? <Vacio msg="Selecciona un departamento para ver sus municipios" />
-        : <><div className="relative w-full h-56"><canvas ref={ref} /></div>
-          {/* Leyenda de colores */}
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{hintTexto}</p>
-         </>
+        : <>
+            <div className="relative w-full h-56"><canvas ref={ref} /></div>
+            {/* Leyenda de colores */}
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              🟡 Con aeropuerto · 🔵 Sin aeropuerto · 🔴 seleccionado
+            </p>
+          </>
       }
     </div>
   );
@@ -322,8 +319,10 @@ function GraficaCiudades({ ciudades, aeropuertos, filtro, onChangeFiltro }: {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // GRÁFICA 3 — Aeropuertos
-// Lógica: ciudad → filtra por cityId; departamento → barra por nombre; global → top deptos
-// El depto/ciudad seleccionado se resalta en rojo, el resto en gris
+// Sin filtro: mensaje de seleccionar departamento
+// Con departamento: doughnut de municipios con aeropuerto en ese departamento
+// Con municipio: doughnut de aeropuertos de ese municipio específico
+// El cruce correcto es: aero.deparmentId → Departamento.cityCapitalId → Ciudad
 // ══════════════════════════════════════════════════════════════════════════════
 function GraficaAeropuertos({ aeropuertos, ciudades, departamentos, filtro, onChangeFiltro }: {
   aeropuertos: Aeropuerto[]; ciudades: Ciudad[]; departamentos: Departamento[]; filtro: FiltroActivo;
@@ -331,26 +330,68 @@ function GraficaAeropuertos({ aeropuertos, ciudades, departamentos, filtro, onCh
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
-  // Si no hay departamento seleccionado, mostrar mensaje igual que municipios
+  // Deduplicar aeropuertos una sola vez
+  const aerosU = useMemo(() => dedup(aeropuertos, "id"), [aeropuertos]);
+
+  // ── Sin departamento seleccionado ─────────────────────────────────────────
   if (filtro.departamentoId === null) {
+    // Global: top 10 departamentos por cantidad de aeropuertos (barra)
+    const refBar = useRef<HTMLCanvasElement>(null);
+    const { labels, valores, ids } = useMemo(() => {
+      const conteo = new Map<number, number>();
+      aerosU.forEach((a) => {
+        const depId = a.deparmentId ?? a.departmentId;
+        if (depId != null) conteo.set(depId, (conteo.get(depId) ?? 0) + 1);
+      });
+      const top10 = topEntradas(conteo, 10);
+      const nomDept = new Map(departamentos.map((d) => [d.id, d.name]));
+      return {
+        labels: top10.map(([id]) => cortar(nomDept.get(id) ?? `Dep ${id}`)),
+        valores: top10.map(([, v]) => v),
+        ids: top10.map(([id]) => id),
+      };
+    }, [aerosU, departamentos]);
+
+    const barData: ChartData<"bar"> = {
+      labels,
+      datasets: [{ label: "Aeropuertos", data: valores, backgroundColor: C.azul.bg, borderColor: C.azul.border, borderWidth: 1, borderRadius: 4 }],
+    };
+    const barOptions: ChartOptions<"bar"> = {
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.parsed.y} aeropuerto(s)` } } },
+      scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: "rgba(0,0,0,0.05)" } } },
+    };
+    useChart(refBar, "bar", barData, barOptions, (i) => {
+      const depId = ids[i];
+      const dep = departamentos.find((d) => d.id === depId);
+      if (dep) onChangeFiltro({ departamentoId: dep.id, departamentoNombre: dep.name, ciudadId: null, ciudadNombre: null });
+    });
+
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Aeropuertos</p>
-        <Vacio msg="Selecciona un departamento para ver sus aeropuertos" />
+        <div className="relative w-full h-56"><canvas ref={refBar} /></div>
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>🔵 Aeropuertos por departamento · clic para seleccionar</p>
       </div>
     );
   }
 
-  // Si hay ciudad seleccionada, mostrar los aeropuertos de esa ciudad (doughnut)
+  // ── Con municipio seleccionado: aeropuertos de ese municipio ──────────────
   if (filtro.ciudadId !== null) {
-    const aerosU = dedup(aeropuertos, "id");
-    const aerosCiudad = aerosU.filter((a) => Number(a.cityId) === Number(filtro.ciudadId));
-    const ciudad = ciudades.find((c) => c.id === filtro.ciudadId);
+    // Buscamos el departamento del municipio seleccionado para saber su cityCapitalId
+    // Solo mostramos aeropuertos cuya capital de departamento coincida con el municipio
+    const ciudadSeleccionada = ciudades.find((c) => Number(c.id) === Number(filtro.ciudadId));
+    const aerosCiudad = aerosU.filter((a) => {
+      const cid = getCiudadIdDeAeropuerto(a, departamentos);
+      return cid != null && cid === Number(filtro.ciudadId);
+    });
+
     const doughnutData: ChartData<"doughnut"> = {
       labels: aerosCiudad.length === 0 ? ["Sin aeropuertos"] : aerosCiudad.map((a) => cortar(a.name, 22)),
       datasets: [{
         data: aerosCiudad.length === 0 ? [1] : aerosCiudad.map(() => 1),
-        backgroundColor: aerosCiudad.length === 0 ? ["rgba(200,200,200,0.4)"] : DOUGHNUT_COLORS.slice(0, aerosCiudad.length),
+        backgroundColor: aerosCiudad.length === 0
+          ? ["rgba(200,200,200,0.4)"]
+          : DOUGHNUT_COLORS.slice(0, aerosCiudad.length),
         borderColor: "rgba(255,255,255,0.8)",
         borderWidth: 2,
       }],
@@ -358,72 +399,94 @@ function GraficaAeropuertos({ aeropuertos, ciudades, departamentos, filtro, onCh
     const doughnutOptions: ChartOptions<"doughnut"> = {
       plugins: {
         legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
-        tooltip: {
-          callbacks: {
-            label: (c) => aerosCiudad.length === 0 ? " Este municipio no tiene aeropuertos registrados" : ` ${c.label}`,
-          }
-        },
+        tooltip: { callbacks: {
+          label: (c) => aerosCiudad.length === 0
+            ? " Este municipio no tiene aeropuertos registrados"
+            : ` ${c.label}`,
+        }},
       },
     };
     useChart(ref, "doughnut", doughnutData, doughnutOptions);
+
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{`Aeropuertos en ${ciudad?.name ?? "Municipio"} (${aerosCiudad.length})`}</p>
-        <div className="relative w-full h-56">
-          <canvas ref={ref} />
-        </div>
-        {aerosCiudad.length === 0 && <p className="text-xs" style={{ color: "var(--text-muted)" }}>Este municipio no tiene aeropuertos registrados en la API</p>}
+        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          {`Aeropuertos en ${ciudadSeleccionada?.name ?? filtro.ciudadNombre} (${aerosCiudad.length})`}
+        </p>
+        <div className="relative w-full h-56"><canvas ref={ref} /></div>
+        {aerosCiudad.length === 0 && (
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            Este municipio no tiene aeropuertos registrados en la API
+          </p>
+        )}
       </div>
     );
   }
 
-  // Si hay departamento seleccionado pero no ciudad, mostrar solo municipios con al menos 1 aeropuerto
-  const aerosU = dedup(aeropuertos, "id");
-  const ciusU = dedup(ciudades, "id").filter((c) => Number(c.departmentId) === Number(filtro.departamentoId));
-  // Conteo de aeropuertos por municipio
-  const conteo = new Map<number, number>(ciusU.map((c) => [Number(c.id), 0]));
-  aerosU.forEach((a) => {
-    const cid = Number(a.cityId);
-    if (cid && conteo.has(cid)) conteo.set(cid, (conteo.get(cid) ?? 0) + 1);
-  });
-  // Filtrar solo municipios con al menos 1 aeropuerto
-  const municipiosConAero = ciusU.filter((c) => (conteo.get(Number(c.id)) ?? 0) > 0);
-  // Ordenar municipios por cantidad de aeropuertos (descendente)
-  const ordenados = [...municipiosConAero].sort((a, b) => (conteo.get(Number(b.id)) ?? 0) - (conteo.get(Number(a.id)) ?? 0));
-  const labels = ordenados.map((c) => cortar(c.name));
-  const valores = ordenados.map((c) => conteo.get(Number(c.id)) ?? 0);
-  const colores = valores.map((v, i) => DOUGHNUT_COLORS[i % DOUGHNUT_COLORS.length]);
+  // ── Con departamento pero sin municipio: doughnut de municipios con aeropuerto ──
+  // Conteo: aero → cityCapitalId del departamento → municipio
+  const conteoDepto = useMemo(() => {
+    const ciusDepto = dedup(ciudades, "id")
+      .filter((c) => Number(c.departmentId) === Number(filtro.departamentoId));
+    const conteo = new Map<number, number>(ciusDepto.map((c) => [Number(c.id), 0]));
+    aerosU.forEach((a) => {
+      const cid = getCiudadIdDeAeropuerto(a, departamentos);
+      if (cid != null && conteo.has(cid)) conteo.set(cid, (conteo.get(cid) ?? 0) + 1);
+    });
+    // Solo municipios con al menos 1 aeropuerto, ordenados desc
+    return [...conteo.entries()]
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1]);
+  }, [aerosU, ciudades, departamentos, filtro.departamentoId]);
+
+  const nomCiudad = new Map(ciudades.map((c) => [c.id, c.name]));
+  const labels = conteoDepto.map(([id]) => cortar(nomCiudad.get(id) ?? `Mun. ${id}`, 18));
+  const valores = conteoDepto.map(([, v]) => v);
+
   const doughnutData: ChartData<"doughnut"> = {
     labels,
-    datasets: [{ data: valores, backgroundColor: colores, borderColor: "rgba(255,255,255,0.8)", borderWidth: 2 }],
+    datasets: [{
+      data: valores.length === 0 ? [1] : valores,
+      backgroundColor: valores.length === 0
+        ? ["rgba(200,200,200,0.4)"]
+        : DOUGHNUT_COLORS.slice(0, valores.length),
+      borderColor: "rgba(255,255,255,0.8)",
+      borderWidth: 2,
+    }],
   };
   const doughnutOptions: ChartOptions<"doughnut"> = {
     plugins: {
       legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
-      tooltip: {
-        callbacks: {
-          label: (c) => {
-            const v = valores[c.dataIndex] ?? 0;
-            return ` ${c.label}: ${v} aeropuerto${v > 1 ? "s" : ""}`;
-          }
-        }
-      },
+      tooltip: { callbacks: {
+        label: (c) => valores.length === 0
+          ? " No hay aeropuertos registrados en este departamento"
+          : ` ${c.label}: ${valores[c.dataIndex]} aeropuerto${valores[c.dataIndex] > 1 ? "s" : ""}`,
+      }},
     },
   };
+
+  const ordenadosCiudades = conteoDepto.map(([id]) => ciudades.find((c) => c.id === id)).filter(Boolean) as Ciudad[];
+
   useChart(ref, "doughnut", doughnutData, doughnutOptions, (i) => {
-    const c = ordenados[i];
+    const c = ordenadosCiudades[i];
     if (!c) return;
-    if (filtro.ciudadId === c.id) {
-      onChangeFiltro({ ciudadId: null, ciudadNombre: null, departamentoId: filtro.departamentoId, departamentoNombre: filtro.departamentoNombre });
-    } else {
-      onChangeFiltro({ ciudadId: c.id, ciudadNombre: c.name, departamentoId: filtro.departamentoId, departamentoNombre: filtro.departamentoNombre });
-    }
+    onChangeFiltro({ ciudadId: c.id, ciudadNombre: c.name, departamentoId: filtro.departamentoId, departamentoNombre: filtro.departamentoNombre });
   });
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{`Aeropuertos en ${filtro.departamentoNombre}`}</p>
-      <div className="relative w-full h-56"><canvas ref={ref} /></div>
+      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+        {`Aeropuertos en ${filtro.departamentoNombre} (${valores.reduce((s, v) => s + v, 0)} total)`}
+      </p>
+      {valores.length === 0
+        ? <Vacio msg="No hay aeropuertos registrados en este departamento" />
+        : <div className="relative w-full h-56"><canvas ref={ref} /></div>
+      }
+      {valores.length > 0 && (
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          Solo municipios con aeropuerto · clic para ver detalle del municipio
+        </p>
+      )}
     </div>
   );
 }
@@ -439,7 +502,7 @@ function GraficaSitios({ sitios, ciudades, filtro, onChangeFiltro }: {
 
   const { labels, valores, titulo, top7Ids } = useMemo(() => {
     const sitiosU = dedup(sitios, "id");
-    const ciusU = dedup(ciudades, "id");
+    const ciusU   = dedup(ciudades, "id");
     const mapaNombre = new Map(ciusU.map((c) => [c.id, c.name]));
 
     let lista = sitiosU;
@@ -457,22 +520,15 @@ function GraficaSitios({ sitios, ciudades, filtro, onChangeFiltro }: {
 
     const sufijo = filtro.ciudadNombre ?? filtro.departamentoNombre ?? "Colombia";
     return {
-      labels: top7.map(([id]) => cortar(mapaNombre.get(id) ?? `Municipio ${id}`, 18)),
+      labels:  top7.map(([id]) => cortar(mapaNombre.get(id) ?? `Municipio ${id}`, 18)),
       valores: top7.map(([, v]) => v),
-      titulo: `Sitios turísticos — ${sufijo} (${lista.length} total)`,
+      titulo:  `Sitios turísticos — ${sufijo} (${lista.length} total)`,
       top7Ids: top7.map(([id]) => id),
     };
   }, [sitios, ciudades, filtro]);
 
-  // Doughnut: cada arco = un municipio con sus sitios turísticos
   const data: ChartData<"doughnut"> = { labels, datasets: [{ data: valores, backgroundColor: DOUGHNUT_COLORS.slice(0, valores.length), borderColor: "rgba(255,255,255,0.8)", borderWidth: 2 }] };
-  const options: ChartOptions<"doughnut"> = {
-    plugins: {
-      legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } },
-      // Tooltip: muestra nombre del municipio y cantidad de sitios
-      tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} sitios` } },
-    },
-  };
+  const options: ChartOptions<"doughnut"> = { plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} sitios` } } } };
 
   useChart(ref, "doughnut", data, options, (i) => {
     const id = top7Ids[i];
@@ -493,8 +549,7 @@ function GraficaSitios({ sitios, ciudades, filtro, onChangeFiltro }: {
         ? <Vacio msg="Sin sitios turísticos para el filtro actual" />
         : <div className="relative w-full h-56"><canvas ref={ref} /></div>
       }
-      {/* Hint: aclara que son municipios y que el clic filtra */}
-      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Sitios turístico</p>
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>Sitios Turísticos · clic para filtrar</p>
     </div>
   );
 }
@@ -548,7 +603,7 @@ function GraficaPartidos({ presidentes }: { presidentes: Presidente[] }) {
   return (
     <div className="flex flex-col gap-2 md:col-span-2">
       <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-        Presidentes por partido político
+        Presidentes por partido político ({presidentes.length} registros)
       </p>
       {valores.length === 0
         ? <Vacio msg="Sin datos de presidentes" />
@@ -606,10 +661,10 @@ export default function Grafica({ filtro, departamentos, ciudades, aeropuertos, 
       ) : (
         <div key={`graficas-${filtro.departamentoId}-${filtro.ciudadId}`} className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
           <GraficaDepartamentos departamentos={departamentos} ciudades={ciudades} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
-          <GraficaCiudades ciudades={ciudades} aeropuertos={aeropuertos} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
-          <GraficaAeropuertos aeropuertos={aeropuertos} ciudades={ciudades} departamentos={departamentos} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
-          <GraficaSitios sitios={sitios} ciudades={ciudades} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
-          <GraficaPartidos presidentes={presidentes} />
+          <GraficaCiudades      ciudades={ciudades} aeropuertos={aeropuertos} departamentos={departamentos} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
+          <GraficaAeropuertos   aeropuertos={aeropuertos} ciudades={ciudades} departamentos={departamentos} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
+          <GraficaSitios        sitios={sitios} ciudades={ciudades} filtro={filtro} onChangeFiltro={(n) => onChangeFiltro({ ...filtro, ...n })} />
+          <GraficaPartidos      presidentes={presidentes} />
         </div>
       )}
     </section>

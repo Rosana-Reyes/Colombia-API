@@ -1,15 +1,10 @@
-// src/types/colombia.ts
-//
-// Aquí defino los tipos de TypeScript para los datos que devuelve la API
-// Un "interface" es como un molde — le dice a TypeScript qué forma tiene cada objeto
-// Si la API manda un campo diferente, TypeScript nos avisa con un error en rojo
-
 /** Un departamento de Colombia */
 export interface Departamento {
   id:             number;   // identificador único en la API
   name:           string;   // nombre del departamento (ej: "Bolívar")
   description?:   string;   // descripción (el ? significa que puede no venir)
-  cityCapital?:   string;   // capital del departamento
+  cityCapital?:   string;   // capital del departamento (nombre, no id)
+  cityCapitalId?: number;   // id de la ciudad capital — clave para cruzar con aeropuertos
   surface?:       number;   // superficie en km²
   population?:    number;   // población aproximada
   municipalities?: number;  // cantidad de municipios
@@ -42,14 +37,15 @@ export interface SitioTuristico {
 
 /** Un aeropuerto */
 export interface Aeropuerto {
-  id:           number;
-  name:         string;
-  iataCode?:    string;  // código IATA (ej: "BOG" para El Dorado)
-  oaciCode?:    string;  // código OACI
-  type?:        string;  // tipo: internacional, nacional, etc.
-  departmentId?: number; // lo uso para filtrar por departamento
-  cityId?:      number;
-  // NO incluyo city ni department (objetos anidados)
+  id:            number;
+  name:          string;
+  iataCode?:     string;  // código IATA (ej: "BOG" para El Dorado)
+  oaciCode?:     string;  // código OACI
+  type?:         string;  // tipo: internacional, nacional, etc.
+  cityId?:       number;  // id directo del municipio (cuando la API lo incluye)
+  deparmentId?:  number;  // id del departamento (siempre presente)
+  departmentId?: number;  // alias por si el proxy normaliza el typo
+  // Cruce: si cityId existe → usarlo; si no → deparmentId → Departamento.cityCapitalId
 }
 
 /** Un área natural */
